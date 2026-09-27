@@ -265,6 +265,41 @@ function applyToggles() {
 }
 ["t-water", "t-rain", "t-dam", "t-gdacs", "t-critical"].forEach((id) => $(id).addEventListener("change", applyToggles));
 
+// ---------- Windy ----------
+// Windy ให้ฝังได้เฉพาะแบบ iframe จึงแยกเป็นแผงของตัวเอง แล้วซิงก์ตำแหน่งกับแผนที่หลักเมื่อผู้ใช้กด
+const windy = { overlay: "radar", lat: 13.2, lon: 101.0, zoom: 6 };
+
+function updateWindy() {
+  const { overlay, lat, lon, zoom } = windy;
+  const p = new URLSearchParams({
+    lat, lon, detailLat: lat, detailLon: lon, zoom,
+    level: "surface", overlay, product: overlay === "radar" ? "radar" : "ecmwf",
+    menu: "", message: "true", marker: "", calendar: "now", pressure: "", type: "map",
+    location: "coordinates", detail: "", metricWind: "km/h", metricTemp: "°C", radarRange: "-1",
+  });
+  $("windy").src = `https://embed.windy.com/embed2.html?${p}`;
+  $("windy-link").href = `https://www.windy.com/?${overlay},${lat},${lon},${zoom}`;
+}
+
+function syncWindyToMap() {
+  const c = map.getCenter();
+  windy.lat = +c.lat.toFixed(3);
+  windy.lon = +c.lng.toFixed(3);
+  // Windy ซูมได้ 3–11 และภาพดูใกล้กว่า Leaflet ราว 1 ระดับ
+  windy.zoom = Math.min(11, Math.max(3, map.getZoom() - 1));
+  updateWindy();
+}
+
+$("windy-overlay").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-overlay]");
+  if (!btn || btn.dataset.overlay === windy.overlay) return;
+  windy.overlay = btn.dataset.overlay;
+  $("windy-overlay").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+  updateWindy();
+});
+$("windy-sync").addEventListener("click", syncWindyToMap);
+updateWindy();
+
 // ---------- Load ----------
 function setStatus(state, text) {
   $("status").className = "status " + state;

@@ -85,10 +85,27 @@
     </aside>
   </main>
 
+  <section class="windy-panel" aria-label="เรดาร์และพยากรณ์ฝนจาก Windy">
+    <div class="windy-bar">
+      <h2>เรดาร์และพยากรณ์ฝน <span>Windy</span></h2>
+      <div class="seg" id="windy-overlay" role="group" aria-label="ชั้นข้อมูล Windy">
+        <button data-overlay="radar" aria-pressed="true">เรดาร์ฝน</button>
+        <button data-overlay="rain" aria-pressed="false">ฝนพยากรณ์</button>
+        <button data-overlay="wind" aria-pressed="false">ลม</button>
+        <button data-overlay="clouds" aria-pressed="false">เมฆ</button>
+      </div>
+      <div class="windy-actions">
+        <button class="btn" id="windy-sync" title="เลื่อน Windy ไปตำแหน่งเดียวกับแผนที่ด้านบน">ตามแผนที่หลัก</button>
+        <a class="btn" id="windy-link" href="https://www.windy.com" target="_blank" rel="noopener">เปิดใน Windy ↗</a>
+      </div>
+    </div>
+    <iframe id="windy" title="แผนที่ Windy" loading="lazy" allowfullscreen></iframe>
+  </section>
+
   <footer class="foot">
     ข้อมูล: <a href="https://www.thaiwater.net" target="_blank" rel="noopener">คลังข้อมูลน้ำแห่งชาติ (สสน.)</a> ·
     <a href="https://www.gdacs.org" target="_blank" rel="noopener">GDACS</a> ·
-    ข่าวจาก Google News ·
+    ข่าวจาก Google News · เรดาร์/พยากรณ์ © <a href="https://www.windy.com" target="_blank" rel="noopener">Windy.com</a> ·
     แผนที่ © Esri · ใช้เพื่อการติดตามสถานการณ์เท่านั้น โปรดยึดประกาศทางการ
   </footer>
 
