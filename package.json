@@ -1,0 +1,13 @@
+{
+  "name": "floodalert",
+  "private": true,
+  "type": "module",
+  "description": "แผนที่เฝ้าระวังน้ำท่วมประเทศไทย",
+  "scripts": {
+    "build:feed": "node scripts/build-feed.js",
+    "dev": "python -m http.server 5173"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

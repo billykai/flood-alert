@@ -1,0 +1,50 @@
+name: Build & deploy
+
+# สร้าง data/*.json แล้ว deploy ทั้งเว็บขึ้น GitHub Pages
+# ไม่ commit ไฟล์ข้อมูลกลับเข้า repo เพื่อไม่ให้ประวัติ git บวม
+# ต้องตั้ง Settings → Pages → Source = "GitHub Actions"
+on:
+  push:
+    branches: [main]
+  schedule:
+    # ทุก 15 นาที (GitHub อาจดีเลย์ได้หลายนาทีช่วงที่คนใช้เยอะ)
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build data/feed.json and data/water.json
+        run: npm run build:feed
+
+      - name: Prepare site
+        run: |
+          mkdir -p _site
+          cp -r index.html styles.css app.js parse.js data _site/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

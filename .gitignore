@@ -1,0 +1,4 @@
+# สร้างโดย npm run build:feed / GitHub Actions
+data/
+_site/
+node_modules/

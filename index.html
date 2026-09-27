@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FloodAlert เฝ้าระวังน้ำท่วม</title>
+  <meta name="description" content="แผนที่ระดับน้ำ ฝน 24 ชม. และเขื่อนทั่วประเทศไทย อัปเดตอัตโนมัติจากคลังข้อมูลน้ำแห่งชาติ">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9m0 0-3-3m3 3 3-3M3 16c2 0 2-1.5 4.5-1.5S9.5 16 12 16s2.5-1.5 4.5-1.5S19 16 21 16M3 20c2 0 2-1.5 4.5-1.5S9.5 20 12 20s2.5-1.5 4.5-1.5S19 20 21 20"/></svg>
+      <div>
+        <h1>FloodAlert เฝ้าระวังน้ำท่วม</h1>
+        <p>ระดับน้ำ · ฝน 24 ชม. · เขื่อน · ข่าว · GDACS</p>
+      </div>
+    </div>
+    <div class="status" id="status"><span class="dot"></span><span id="status-text">กำลังโหลด…</span></div>
+  </header>
+
+  <section class="cards" aria-label="สรุปสถานการณ์">
+    <article class="card c-red">
+      <h2>สถานีน้ำล้นตลิ่ง</h2>
+      <div class="value" id="k-overflow">–</div>
+      <p id="k-overflow-sub">&nbsp;</p>
+    </article>
+    <article class="card c-orange">
+      <h2>น้ำมาก (70–100% ความจุลำน้ำ)</h2>
+      <div class="value" id="k-high">–</div>
+      <p id="k-high-sub">&nbsp;</p>
+    </article>
+    <article class="card c-violet">
+      <h2>ฝนสูงสุด 24 ชม.</h2>
+      <div class="value mono" id="k-rainmax">–</div>
+      <p id="k-rainmax-sub">&nbsp;</p>
+    </article>
+    <article class="card c-blue">
+      <h2>สถานีฝนหนักมาก (&gt;90 มม.)</h2>
+      <div class="value" id="k-heavy">–</div>
+      <p id="k-heavy-sub">&nbsp;</p>
+    </article>
+    <article class="card c-cyan">
+      <h2>เขื่อนใหญ่เกิน 80%</h2>
+      <div class="value" id="k-dam">–</div>
+      <p id="k-dam-sub">&nbsp;</p>
+    </article>
+  </section>
+
+  <main class="layout">
+    <section class="map-panel">
+      <div class="toolbar">
+        <label><input type="checkbox" id="t-water" checked><span class="sw sw-water"></span>ระดับน้ำ</label>
+        <label><input type="checkbox" id="t-rain" checked><span class="sw sw-rain"></span>ฝนหนัก</label>
+        <label><input type="checkbox" id="t-dam" checked><span class="sw sw-dam"></span>เขื่อน</label>
+        <label><input type="checkbox" id="t-gdacs" checked><span class="sw sw-gdacs"></span>GDACS</label>
+        <label class="push"><input type="checkbox" id="t-critical" checked>เฉพาะน้ำมาก/ล้นตลิ่ง</label>
+      </div>
+      <div id="map"></div>
+      <div class="legend">
+        <span><i class="lg lg-red"></i>ล้นตลิ่ง &gt;100%</span>
+        <span><i class="lg lg-orange"></i>น้ำมาก 70–100%</span>
+        <span><i class="lg lg-normal"></i>ปกติ</span>
+        <span><i class="lg lg-rain"></i>ฝน 35–90 มม.</span>
+        <span><i class="lg lg-rain2"></i>ฝน &gt;90 มม.</span>
+        <span><i class="lg lg-dam"></i>เขื่อน (แดง = &gt;80%)</span>
+        <span><i class="lg lg-gdacs"></i>GDACS</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <nav class="tabs" role="tablist">
+        <button role="tab" class="active" data-tab="news">ข่าวล่าสุด <span id="n-news"></span></button>
+        <button role="tab" data-tab="stations">จุดวิกฤต <span id="n-stations"></span></button>
+        <button role="tab" data-tab="dams">เขื่อน <span id="n-dams"></span></button>
+        <button role="tab" data-tab="rain">ฝนหนัก <span id="n-rain"></span></button>
+        <button role="tab" data-tab="gdacs">GDACS <span id="n-gdacs"></span></button>
+      </nav>
+      <div class="list-head" id="list-head" hidden></div>
+      <ul class="list" id="list"></ul>
+    </aside>
+  </main>
+
+  <footer class="foot">
+    ข้อมูล: <a href="https://www.thaiwater.net" target="_blank" rel="noopener">คลังข้อมูลน้ำแห่งชาติ (สสน.)</a> ·
+    <a href="https://www.gdacs.org" target="_blank" rel="noopener">GDACS</a> ·
+    ข่าวจาก Google News ·
+    แผนที่ © Esri · ใช้เพื่อการติดตามสถานการณ์เท่านั้น โปรดยึดประกาศทางการ
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
