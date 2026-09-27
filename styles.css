@@ -38,6 +38,13 @@ a { color: var(--cyan); }
 .brand-icon { width: 30px; height: 30px; fill: none; stroke: var(--cyan); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .brand h1 { font-size: 20px; margin: 0; font-weight: 700; }
 .brand p { margin: 0; color: var(--muted); font-size: 12px; }
+.prov-pick { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: 13px; }
+.prov-pick select {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+  font: inherit; font-size: 14px; padding: 6px 10px; min-width: 190px; cursor: pointer;
+}
+.prov-pick select:hover, .prov-pick select:focus { border-color: var(--cyan); outline: none; }
+.prov-pick select.active { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
 .status { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; white-space: nowrap; }
 .status .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--orange); }
 .status.ok .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
@@ -192,6 +199,9 @@ a { color: var(--cyan); }
 @media (max-width: 640px) {
   .topbar { padding: 10px 16px; }
   .brand h1 { font-size: 16px; }
+  .topbar { flex-wrap: wrap; }
+  .prov-pick { order: 3; width: 100%; margin-left: 0; }
+  .prov-pick select { flex: 1; min-width: 0; }
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px 16px 0; gap: 8px; }
   .card .value { font-size: 24px; }
   .layout { padding: 12px 16px; }

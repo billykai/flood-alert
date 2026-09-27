@@ -78,7 +78,76 @@ function gdacsPopup(e) {
 // ---------- Render water data ----------
 const markerIndex = new Map();
 
+// ---------- Province filter ----------
+// ชื่อที่ข่าวมักใช้แทนชื่อเต็มของจังหวัด
+const PROV_ALIASES = { "กรุงเทพมหานคร": ["กรุงเทพ", "กทม"], "พระนครศรีอยุธยา": ["อยุธยา"] };
+let rawData = null;
+let province = new URLSearchParams(location.search).get("prov") || "";
+let allNews = [];
+
+// ข้อมูลเก่า (ก่อนมีฟิลด์ prov) ดึงชื่อจังหวัดจากข้อความ "อ.X จ.Y"
+const provOf = (s) => s.prov || (s.where?.match(/จ\.(\S+)$/) || [])[1] || "";
+const byProv = (arr) => (province ? arr.filter((s) => provOf(s) === province) : arr);
+
 function renderWater(data) {
+  const first = !rawData;
+  rawData = data;
+  buildProvinceOptions(data);
+  drawWater({ water: byProv(data.water), rain: byProv(data.rain), dams: byProv(data.dams) });
+  // เปิดจากลิงก์ที่มี ?prov= → ซูมไปจังหวัดนั้นตอนโหลดข้อมูลครั้งแรก
+  if (first && province) fitProvince();
+}
+
+function buildProvinceOptions(data) {
+  const stats = new Map();
+  for (const s of [...data.water, ...data.rain, ...data.dams]) {
+    const p = provOf(s);
+    if (!p) continue;
+    if (!stats.has(p)) stats.set(p, 0);
+    if (s.cls === "overflow" || s.cls === "high") stats.set(p, stats.get(p) + 1);
+  }
+  if (province && !stats.has(province)) province = "";
+  const opt = (p, n) => `<option value="${esc(p)}"${p === province ? " selected" : ""}>${esc(p)}${n ? ` · วิกฤต ${n}` : ""}</option>`;
+  const all = [...stats].sort((a, b) => a[0].localeCompare(b[0], "th"));
+  const hot = all.filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  $("prov").innerHTML = `<option value="">ทั้งประเทศ</option>
+    ${hot.length ? `<optgroup label="มีจุดน้ำมาก/ล้นตลิ่ง">${hot.map(([p, n]) => opt(p, n)).join("")}</optgroup>` : ""}
+    <optgroup label="ทุกจังหวัด (ก–ฮ)">${all.map(([p]) => opt(p, 0)).join("")}</optgroup>`;
+  // จังหวัดเดียวกันอยู่ได้ทั้งสองกลุ่ม — ให้ตัวที่เลือกเป็นอันแรกเสมอ
+  $("prov").value = province;
+}
+
+function applyNewsFilter() {
+  if (!province) { lists.news = allNews; return; }
+  const names = [province, ...(PROV_ALIASES[province] || [])];
+  lists.news = allNews.filter((n) => names.some((k) => n.title.includes(k)));
+}
+
+function setProvince(p) {
+  province = p;
+  const url = new URL(location.href);
+  if (p) url.searchParams.set("prov", p); else url.searchParams.delete("prov");
+  history.replaceState(null, "", url);
+  $("prov").classList.toggle("active", !!p);
+  applyNewsFilter();
+  if (rawData) renderWater(rawData);
+  else updateCounts();
+  fitProvince();
+}
+
+function fitProvince() {
+  const p = province;
+  // กรองจากการ์ดค้างอยู่ → ซูมไปที่จุดของการ์ดในจังหวัดใหม่ ไม่งั้นซูมทั้งจังหวัด
+  const pts = focus?.items.length ? focus.items
+    : rawData ? [...rawData.water, ...rawData.rain, ...rawData.dams].filter((s) => p && provOf(s) === p) : [];
+  if (pts.length === 1) map.flyTo([pts[0].lat, pts[0].lng], Math.max(map.getZoom(), 10), { duration: 0.8 });
+  else if (pts.length) map.flyToBounds(L.latLngBounds(pts.map((s) => [s.lat, s.lng])).pad(0.2), { maxZoom: 10, duration: 0.8 });
+  else if (!p) map.flyTo([13.2, 101.0], 6, { duration: 0.8 });
+}
+$("prov").addEventListener("change", (e) => setProvince(e.target.value));
+$("prov").classList.toggle("active", !!province);
+
+function drawWater(data) {
   Object.values(layers).forEach((g) => g.clearLayers());
   [...markerIndex.keys()].filter((k) => k.kind !== "gdacs").forEach((k) => markerIndex.delete(k));
 
@@ -191,7 +260,7 @@ function drawList() {
   const head = $("list-head");
   if (currentTab === "news") {
     head.hidden = false;
-    head.innerHTML = `<span>${newsGenerated ? "ดึงข่าวเมื่อ " + ago(newsGenerated) : "ข่าวจาก Google News"}</span>
+    head.innerHTML = `<span>${province ? `ข่าวที่กล่าวถึง จ.${esc(province)}` : newsGenerated ? "ดึงข่าวเมื่อ " + ago(newsGenerated) : "ข่าวจาก Google News"}</span>
       <a href="${X_URL}" target="_blank" rel="noopener">ดู #น้ำท่วม บน X ↗</a>`;
   } else if (currentTab === "gdacs") {
     head.hidden = false;
@@ -203,7 +272,8 @@ function drawList() {
   const items = currentItems().slice(0, 300);
   const ul = $("list");
   if (!items.length) {
-    ul.innerHTML = `<li class="empty">${currentTab === "news" ? "ยังไม่มีข่าว" : "ไม่มีรายการ"}</li>`;
+    const where = province ? `ใน จ.${esc(province)}` : "";
+    ul.innerHTML = `<li class="empty">${currentTab === "news" ? `ยังไม่มีข่าว${where ? "ที่กล่าวถึงจังหวัดนี้" : ""}` : `ไม่มีรายการ${where}`}</li>`;
     return;
   }
   if (currentTab === "news") {
@@ -427,7 +497,8 @@ async function loadWater() {
 async function loadNews() {
   try {
     const feed = await getJson(`data/feed.json?t=${Date.now()}`);
-    lists.news = feed.news || [];
+    allNews = feed.news || [];
+    applyNewsFilter();
     newsGenerated = feed.generated;
     updateCounts();
   } catch (err) {
