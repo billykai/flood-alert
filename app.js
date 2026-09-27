@@ -12,13 +12,18 @@ const GDACS_RECENT_DAYS = 14;
 const CACHE_KEY = "floodalert:data:v1";
 
 const COLORS = {
-  red: "#ff4d6d", orange: "#ffa53b", normal: "#4a6b76",
-  violet: "#8b8cff", blue: "#6ea8ff", cyan: "#2bc4d9", gdacs: "#c77dff",
+  red: "#ff5470", orange: "#ffab3d", normal: "#4f6b80",
+  violet: "#a08cff", blue: "#5fa8ff", cyan: "#22d3ee", gdacs: "#d78bff",
 };
-const GDACS_LEVEL = { Red: ["แดง", COLORS.red], Orange: ["ส้ม", COLORS.orange], Green: ["เขียว", "#22c55e"] };
+const GDACS_LEVEL = { Red: ["แดง", COLORS.red], Orange: ["ส้ม", COLORS.orange], Green: ["เขียว", "#34d399"] };
 
 // ---------- Map ----------
-const map = L.map("map", { preferCanvas: true, zoomControl: true }).setView([13.2, 101.0], 6);
+const map = L.map("map", { preferCanvas: true, zoomControl: false }).setView([13.2, 101.0], 6);
+// ปุ่มซูมไว้มุมขวาล่าง ไม่ให้ชนแถบเลือกชั้นข้อมูลที่ลอยอยู่มุมซ้ายบน
+L.control.zoom({ position: "bottomright" }).addTo(map);
+// เปิด popup แล้วเลื่อนแผนที่หลบแถบชั้นข้อมูลที่ลอยอยู่ด้านบน
+L.Popup.prototype.options.autoPanPaddingTopLeft = L.point(16, 120);
+L.Popup.prototype.options.autoPanPaddingBottomRight = L.point(60, 60);
 const esri = (layer) =>
   `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_${layer}/MapServer/tile/{z}/{y}/{x}`;
 L.tileLayer(esri("Base"), { maxZoom: 16, attribution: "Tiles © Esri" }).addTo(map);
@@ -235,6 +240,17 @@ function renderCards(data) {
   const topDam = data.dams.reduce((a, b) => (b.pct > (a?.pct ?? -1) ? b : a), null);
   $("k-dam").textContent = `${hot.length}/${data.dams.length}`;
   $("k-dam-sub").textContent = topDam ? `สูงสุด: ${topDam.name} ${fmt(topDam.pct)}%` : "";
+
+  // แถบวัดใต้ตัวเลข: สัดส่วนเทียบกับทั้งหมด (ฝนสูงสุดเทียบ 300 มม.)
+  const ratio = (n, d) => (d ? Math.min(1, n / d) : 0);
+  const meter = {
+    overflow: ratio(overflow.length, reporting.length),
+    high: ratio(high.length, reporting.length),
+    rainmax: ratio(top?.r24 ?? 0, 300),
+    heavy: ratio(veryHeavy, data.rain.length),
+    dam: ratio(hot.length, data.dams.length),
+  };
+  for (const [k, v] of Object.entries(meter)) $("m-" + k).style.width = `${(v * 100).toFixed(1)}%`;
 }
 
 // ---------- GDACS ----------
@@ -304,15 +320,17 @@ function drawList() {
     return;
   }
   ul.innerHTML = items.map((s, i) => {
-    let val, color, title = s.name, where = s.where;
-    if (s.kind === "rain") { val = `${fmt(s.r24)} มม.`; color = s.r24 > 90 ? COLORS.violet : COLORS.blue; }
-    else if (s.kind === "dam") { val = `${fmt(s.pct)}%`; color = s.pct > 80 ? COLORS.red : COLORS.cyan; title = "เขื่อน" + s.name; }
+    // fill = ความยาวแถบระดับใต้รายการ (0–1), null = ไม่แสดงแถบ
+    let val, color, fill = null, title = s.name, where = s.where;
+    if (s.kind === "rain") { val = `${fmt(s.r24)} มม.`; color = s.r24 > 90 ? COLORS.violet : COLORS.blue; fill = s.r24 / 300; }
+    else if (s.kind === "dam") { val = `${fmt(s.pct)}%`; color = s.pct > 80 ? COLORS.red : COLORS.cyan; title = "เขื่อน" + s.name; fill = s.pct / 100; }
     else if (s.kind === "gdacs") {
       [val, color] = GDACS_LEVEL[s.level] || [s.level, COLORS.gdacs];
       where = `${dateTh(new Date(s.from))} – ${dateTh(new Date(s.to))}${s.current ? " · ยังดำเนินอยู่" : ""}`;
     }
-    else { val = `${fmt(s.pct)}%`; color = colorFor(s); }
-    return `<li data-i="${i}"><span class="name">${esc(title)}</span><span class="num" style="color:${color}">${esc(val)}</span><span class="where">${esc(where)}</span></li>`;
+    else { val = `${fmt(s.pct)}%`; color = colorFor(s); fill = s.pct / 200; }
+    const bar = fill === null ? "" : `<span class="bar"><i style="width:${(Math.min(1, Math.max(0, fill)) * 100).toFixed(1)}%"></i></span>`;
+    return `<li data-i="${i}" style="--sev:${color}"><span class="name">${esc(title)}</span><span class="num" style="color:${color}">${esc(val)}</span><span class="where">${esc(where)}</span>${bar}</li>`;
   }).join("");
 }
 

@@ -5,115 +5,155 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FloodAlert เฝ้าระวังน้ำท่วม</title>
   <meta name="description" content="แผนที่ระดับน้ำ ฝน 24 ชม. และเขื่อนทั่วประเทศไทย อัปเดตอัตโนมัติจากคลังข้อมูลน้ำแห่งชาติ">
+  <meta name="theme-color" content="#070d14">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- ไอคอนใช้ซ้ำ -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-waves" viewBox="0 0 24 24"><path d="M2 7c2 0 2-2 5-2s3 2 5 2 2-2 5-2 3 2 5 2M2 12c2 0 2-2 5-2s3 2 5 2 2-2 5-2 3 2 5 2M2 17c2 0 2-2 5-2s3 2 5 2 2-2 5-2 3 2 5 2"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8M15 7h6v6"/></symbol>
+    <symbol id="i-rain" viewBox="0 0 24 24"><path d="M20 13.5A4.5 4.5 0 0 0 16 7a6 6 0 0 0-11.6 2A4 4 0 0 0 6 16.9M8 19v2M8 13v2M12 21v2M12 15v2M16 19v2M16 13v2"/></symbol>
+    <symbol id="i-storm" viewBox="0 0 24 24"><path d="M19 16.9A5 5 0 0 0 18 7h-1.3A8 8 0 1 0 4 15.3M13 11l-4 6h6l-4 6"/></symbol>
+    <symbol id="i-dam" viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l4-3v16M9 9h10v12M13 13h2M13 17h2"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-river" viewBox="0 0 24 24"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05zM12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></symbol>
+  </svg>
+
   <header class="topbar">
     <div class="brand">
-      <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9m0 0-3-3m3 3 3-3M3 16c2 0 2-1.5 4.5-1.5S9.5 16 12 16s2.5-1.5 4.5-1.5S19 16 21 16M3 20c2 0 2-1.5 4.5-1.5S9.5 20 12 20s2.5-1.5 4.5-1.5S19 20 21 20"/></svg>
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2.5c3.5 4.2 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 2.5-6.8 6-11Z"/><path d="M9 15.5c1 .9 2 .9 3 0s2-.9 3 0"/></svg>
+      </div>
       <div>
-        <h1>FloodAlert เฝ้าระวังน้ำท่วม</h1>
-        <p>ระดับน้ำ · ฝน 24 ชม. · เขื่อน · ข่าว · GDACS</p>
+        <h1>FloodAlert</h1>
+        <p>เฝ้าระวังน้ำท่วมประเทศไทย</p>
       </div>
     </div>
+
     <div class="area-pick">
-      <label><span>จังหวัด</span>
-        <select id="prov" aria-label="กรองตามจังหวัด"><option value="">ทั้งประเทศ</option></select></label>
-      <label><span>ลุ่มน้ำ</span>
-        <select id="basin" aria-label="กรองตามลุ่มน้ำ"><option value="">ทุกลุ่มน้ำ</option></select></label>
+      <label class="pick">
+        <svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg>
+        <span class="sr">จังหวัด</span>
+        <select id="prov" aria-label="กรองตามจังหวัด"><option value="">ทั้งประเทศ</option></select>
+      </label>
+      <label class="pick">
+        <svg class="ico" aria-hidden="true"><use href="#i-river"/></svg>
+        <span class="sr">ลุ่มน้ำ</span>
+        <select id="basin" aria-label="กรองตามลุ่มน้ำ"><option value="">ทุกลุ่มน้ำ</option></select>
+      </label>
     </div>
-    <div class="status" id="status"><span class="dot"></span><span id="status-text">กำลังโหลด…</span></div>
+
+    <div class="status" id="status" role="status"><span class="dot"></span><span id="status-text">กำลังโหลด…</span></div>
   </header>
 
-  <section class="cards" aria-label="สรุปสถานการณ์ (กดการ์ดเพื่อกรองแผนที่)">
-    <article class="card c-red" data-focus="overflow" role="button" tabindex="0" aria-pressed="false">
-      <h2>สถานีน้ำล้นตลิ่ง</h2>
-      <div class="value" id="k-overflow">–</div>
-      <p id="k-overflow-sub">&nbsp;</p>
-    </article>
-    <article class="card c-orange" data-focus="high" role="button" tabindex="0" aria-pressed="false">
-      <h2>น้ำมาก (70–100% ความจุลำน้ำ)</h2>
-      <div class="value" id="k-high">–</div>
-      <p id="k-high-sub">&nbsp;</p>
-    </article>
-    <article class="card c-violet" data-focus="rainmax" role="button" tabindex="0" aria-pressed="false">
-      <h2>ฝนสูงสุด 24 ชม.</h2>
-      <div class="value mono" id="k-rainmax">–</div>
-      <p id="k-rainmax-sub">&nbsp;</p>
-    </article>
-    <article class="card c-blue" data-focus="heavy" role="button" tabindex="0" aria-pressed="false">
-      <h2>สถานีฝนหนักมาก (&gt;90 มม.)</h2>
-      <div class="value" id="k-heavy">–</div>
-      <p id="k-heavy-sub">&nbsp;</p>
-    </article>
-    <article class="card c-cyan" data-focus="dam" role="button" tabindex="0" aria-pressed="false">
-      <h2>เขื่อนใหญ่เกิน 80%</h2>
-      <div class="value" id="k-dam">–</div>
-      <p id="k-dam-sub">&nbsp;</p>
-    </article>
-  </section>
-
-  <main class="layout">
-    <section class="map-panel">
-      <div class="toolbar">
-        <label><input type="checkbox" id="t-water" checked><span class="sw sw-water"></span>ระดับน้ำ</label>
-        <label><input type="checkbox" id="t-rain" checked><span class="sw sw-rain"></span>ฝนหนัก</label>
-        <label><input type="checkbox" id="t-dam" checked><span class="sw sw-dam"></span>เขื่อน</label>
-        <label><input type="checkbox" id="t-gdacs" checked><span class="sw sw-gdacs"></span>GDACS</label>
-        <button class="focus-chip" id="focus-chip" hidden title="ล้างตัวกรอง (Esc)">กรอง: <b id="focus-label"></b> <span aria-hidden="true">✕</span></button>
-        <label class="push"><input type="checkbox" id="t-critical" checked>เฉพาะน้ำมาก/ล้นตลิ่ง</label>
-      </div>
-      <div id="map"></div>
-      <div class="legend">
-        <span><i class="lg lg-red"></i>ล้นตลิ่ง &gt;100%</span>
-        <span><i class="lg lg-orange"></i>น้ำมาก 70–100%</span>
-        <span><i class="lg lg-normal"></i>ปกติ</span>
-        <span><i class="lg lg-rain"></i>ฝน 35–90 มม.</span>
-        <span><i class="lg lg-rain2"></i>ฝน &gt;90 มม.</span>
-        <span><i class="lg lg-dam"></i>เขื่อน (แดง = &gt;80%)</span>
-        <span><i class="lg lg-gdacs"></i>GDACS</span>
-      </div>
+  <main class="page">
+    <section class="cards" aria-label="สรุปสถานการณ์ (กดการ์ดเพื่อกรองแผนที่)">
+      <article class="card c-red" data-focus="overflow" role="button" tabindex="0" aria-pressed="false">
+        <div class="card-top"><span class="chip-ico"><svg><use href="#i-waves"/></svg></span><h2>น้ำล้นตลิ่ง</h2></div>
+        <div class="value" id="k-overflow">–</div>
+        <p id="k-overflow-sub">&nbsp;</p>
+        <div class="meter"><i id="m-overflow"></i></div>
+      </article>
+      <article class="card c-orange" data-focus="high" role="button" tabindex="0" aria-pressed="false">
+        <div class="card-top"><span class="chip-ico"><svg><use href="#i-trend"/></svg></span><h2>น้ำมาก 70–100%</h2></div>
+        <div class="value" id="k-high">–</div>
+        <p id="k-high-sub">&nbsp;</p>
+        <div class="meter"><i id="m-high"></i></div>
+      </article>
+      <article class="card c-violet" data-focus="rainmax" role="button" tabindex="0" aria-pressed="false">
+        <div class="card-top"><span class="chip-ico"><svg><use href="#i-rain"/></svg></span><h2>ฝนสูงสุด 24 ชม.</h2></div>
+        <div class="value" id="k-rainmax">–</div>
+        <p id="k-rainmax-sub">&nbsp;</p>
+        <div class="meter"><i id="m-rainmax"></i></div>
+      </article>
+      <article class="card c-blue" data-focus="heavy" role="button" tabindex="0" aria-pressed="false">
+        <div class="card-top"><span class="chip-ico"><svg><use href="#i-storm"/></svg></span><h2>ฝนหนักมาก &gt;90 มม.</h2></div>
+        <div class="value" id="k-heavy">–</div>
+        <p id="k-heavy-sub">&nbsp;</p>
+        <div class="meter"><i id="m-heavy"></i></div>
+      </article>
+      <article class="card c-cyan" data-focus="dam" role="button" tabindex="0" aria-pressed="false">
+        <div class="card-top"><span class="chip-ico"><svg><use href="#i-dam"/></svg></span><h2>เขื่อนใหญ่เกิน 80%</h2></div>
+        <div class="value" id="k-dam">–</div>
+        <p id="k-dam-sub">&nbsp;</p>
+        <div class="meter"><i id="m-dam"></i></div>
+      </article>
     </section>
 
-    <aside class="side">
-      <nav class="tabs" role="tablist">
-        <button role="tab" class="active" data-tab="news">ข่าวล่าสุด <span id="n-news"></span></button>
-        <button role="tab" data-tab="stations">จุดวิกฤต <span id="n-stations"></span></button>
-        <button role="tab" data-tab="dams">เขื่อน <span id="n-dams"></span></button>
-        <button role="tab" data-tab="rain">ฝนหนัก <span id="n-rain"></span></button>
-        <button role="tab" data-tab="gdacs">GDACS <span id="n-gdacs"></span></button>
-      </nav>
-      <div class="list-head" id="list-head" hidden></div>
-      <ul class="list" id="list"></ul>
-    </aside>
+    <div class="layout">
+      <section class="panel map-panel" aria-label="แผนที่">
+        <div class="map-wrap">
+          <div id="map"></div>
+
+          <div class="map-toolbar">
+            <div class="chips" role="group" aria-label="ชั้นข้อมูล">
+              <label class="toggle"><input type="checkbox" id="t-water" checked><span class="sw sw-water"></span>ระดับน้ำ</label>
+              <label class="toggle"><input type="checkbox" id="t-rain" checked><span class="sw sw-rain"></span>ฝนหนัก</label>
+              <label class="toggle"><input type="checkbox" id="t-dam" checked><span class="sw sw-dam"></span>เขื่อน</label>
+              <label class="toggle"><input type="checkbox" id="t-gdacs" checked><span class="sw sw-gdacs"></span>GDACS</label>
+              <label class="toggle"><input type="checkbox" id="t-critical" checked><span class="sw sw-check"></span>เฉพาะน้ำมาก/ล้นตลิ่ง</label>
+            </div>
+            <button class="focus-chip" id="focus-chip" hidden title="ล้างตัวกรอง (Esc)">กรอง: <b id="focus-label"></b> <span aria-hidden="true">✕</span></button>
+          </div>
+
+          <div class="legend" aria-label="คำอธิบายสัญลักษณ์">
+            <span><i class="lg lg-red"></i>ล้นตลิ่ง</span>
+            <span><i class="lg lg-orange"></i>น้ำมาก</span>
+            <span><i class="lg lg-normal"></i>ปกติ</span>
+            <span><i class="lg lg-rain"></i>ฝน 35–90</span>
+            <span><i class="lg lg-rain2"></i>ฝน &gt;90</span>
+            <span><i class="lg lg-dam"></i>เขื่อน</span>
+            <span><i class="lg lg-gdacs"></i>GDACS</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel side" aria-label="รายการ">
+        <nav class="tabs" role="tablist">
+          <button role="tab" class="active" data-tab="news">ข่าว <span id="n-news"></span></button>
+          <button role="tab" data-tab="stations">จุดวิกฤต <span id="n-stations"></span></button>
+          <button role="tab" data-tab="dams">เขื่อน <span id="n-dams"></span></button>
+          <button role="tab" data-tab="rain">ฝนหนัก <span id="n-rain"></span></button>
+          <button role="tab" data-tab="gdacs">GDACS <span id="n-gdacs"></span></button>
+        </nav>
+        <div class="list-head" id="list-head" hidden></div>
+        <ul class="list" id="list"></ul>
+      </aside>
+    </div>
+
+    <section class="panel windy-panel" aria-label="เรดาร์และพยากรณ์ฝนจาก Windy">
+      <div class="windy-bar">
+        <div class="section-title">
+          <span class="chip-ico c-violet"><svg><use href="#i-rain"/></svg></span>
+          <div><h2>เรดาร์และพยากรณ์ฝน</h2><p>ข้อมูลจาก Windy.com</p></div>
+        </div>
+        <div class="seg" id="windy-overlay" role="group" aria-label="ชั้นข้อมูล Windy">
+          <button data-overlay="radar" aria-pressed="true">เรดาร์ฝน</button>
+          <button data-overlay="rain" aria-pressed="false">ฝนพยากรณ์</button>
+          <button data-overlay="wind" aria-pressed="false">ลม</button>
+          <button data-overlay="clouds" aria-pressed="false">เมฆ</button>
+        </div>
+        <div class="windy-actions">
+          <button class="btn" id="windy-sync" title="เลื่อน Windy ไปตำแหน่งเดียวกับแผนที่ด้านบน">ตามแผนที่หลัก</button>
+          <a class="btn" id="windy-link" href="https://www.windy.com" target="_blank" rel="noopener">เปิดใน Windy ↗</a>
+        </div>
+      </div>
+      <iframe id="windy" title="แผนที่ Windy" loading="lazy" allowfullscreen></iframe>
+    </section>
   </main>
 
-  <section class="windy-panel" aria-label="เรดาร์และพยากรณ์ฝนจาก Windy">
-    <div class="windy-bar">
-      <h2>เรดาร์และพยากรณ์ฝน <span>Windy</span></h2>
-      <div class="seg" id="windy-overlay" role="group" aria-label="ชั้นข้อมูล Windy">
-        <button data-overlay="radar" aria-pressed="true">เรดาร์ฝน</button>
-        <button data-overlay="rain" aria-pressed="false">ฝนพยากรณ์</button>
-        <button data-overlay="wind" aria-pressed="false">ลม</button>
-        <button data-overlay="clouds" aria-pressed="false">เมฆ</button>
-      </div>
-      <div class="windy-actions">
-        <button class="btn" id="windy-sync" title="เลื่อน Windy ไปตำแหน่งเดียวกับแผนที่ด้านบน">ตามแผนที่หลัก</button>
-        <a class="btn" id="windy-link" href="https://www.windy.com" target="_blank" rel="noopener">เปิดใน Windy ↗</a>
-      </div>
-    </div>
-    <iframe id="windy" title="แผนที่ Windy" loading="lazy" allowfullscreen></iframe>
-  </section>
-
   <footer class="foot">
-    ข้อมูล: <a href="https://www.thaiwater.net" target="_blank" rel="noopener">คลังข้อมูลน้ำแห่งชาติ (สสน.)</a> ·
-    <a href="https://www.gdacs.org" target="_blank" rel="noopener">GDACS</a> ·
-    ข่าวจาก Google News · เรดาร์/พยากรณ์ © <a href="https://www.windy.com" target="_blank" rel="noopener">Windy.com</a> ·
-    แผนที่ © Esri · ใช้เพื่อการติดตามสถานการณ์เท่านั้น โปรดยึดประกาศทางการ
+    <p>
+      ข้อมูล: <a href="https://www.thaiwater.net" target="_blank" rel="noopener">คลังข้อมูลน้ำแห่งชาติ (สสน.)</a> ·
+      <a href="https://www.gdacs.org" target="_blank" rel="noopener">GDACS</a> ·
+      ข่าวจาก Google News · เรดาร์/พยากรณ์ © <a href="https://www.windy.com" target="_blank" rel="noopener">Windy.com</a> · แผนที่ © Esri
+    </p>
+    <p>ใช้เพื่อการติดตามสถานการณ์เท่านั้น โปรดยึดประกาศจากหน่วยงานราชการ</p>
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
