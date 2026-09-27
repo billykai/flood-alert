@@ -120,6 +120,8 @@ function renderWater(data) {
   lists.dams = [...data.dams].sort((a, b) => b.pct - a.pct);
   lists.rain = [...data.rain].sort((a, b) => b.r24 - a.r24);
   updateCounts();
+  // ข้อมูลรอบใหม่ → คำนวณจุดที่กรองไว้ใหม่ โดยไม่ขยับแผนที่
+  if (focus) applyFocus(focus.key, false);
 }
 
 function renderCards(data) {
@@ -198,7 +200,7 @@ function drawList() {
     head.hidden = true;
   }
 
-  const items = lists[currentTab].slice(0, 300);
+  const items = currentItems().slice(0, 300);
   const ul = $("list");
   if (!items.length) {
     ul.innerHTML = `<li class="empty">${currentTab === "news" ? "ยังไม่มีข่าว" : "ไม่มีรายการ"}</li>`;
@@ -228,7 +230,7 @@ function drawList() {
 $("list").addEventListener("click", (e) => {
   const li = e.target.closest("li[data-i]");
   if (!li) return;
-  const s = lists[currentTab][Number(li.dataset.i)];
+  const s = currentItems()[Number(li.dataset.i)];
   // เปิด layer ที่เกี่ยวข้องก่อน ถ้าผู้ใช้ปิดไว้
   const toggle = { water: "t-water", rain: "t-rain", dam: "t-dam", gdacs: "t-gdacs" }[s.kind];
   if (!$(toggle).checked) { $(toggle).checked = true; applyToggles(); }
@@ -238,18 +240,19 @@ $("list").addEventListener("click", (e) => {
     return;
   }
   if (!m) return;
+  // จุดนี้ไม่อยู่ในตัวกรองจากการ์ด → ล้างตัวกรองก่อนให้จุดแสดงบนแผนที่
+  if (focus && !focusLayer.hasLayer(m)) clearFocus();
   map.flyTo([s.lat, s.lng], Math.max(map.getZoom(), 10), { duration: 0.8 });
   map.once("moveend", () => m.openPopup());
 });
 
-document.querySelectorAll(".tabs button").forEach((b) =>
-  b.addEventListener("click", () => {
-    document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("active", x === b));
-    currentTab = b.dataset.tab;
-    drawList();
-    $("list").scrollTop = 0;
-  })
-);
+function selectTab(tab) {
+  document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("active", x.dataset.tab === tab));
+  currentTab = tab;
+  drawList();
+  $("list").scrollTop = 0;
+}
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => selectTab(b.dataset.tab)));
 
 // ---------- Toggles ----------
 function setLayer(group, on) {
@@ -257,13 +260,84 @@ function setLayer(group, on) {
   if (!on && map.hasLayer(group)) map.removeLayer(group);
 }
 function applyToggles() {
+  // โหมดกรองจากการ์ด: ซ่อนทุกชั้น แสดงเฉพาะจุดที่ตรงเงื่อนไข
+  if (focus) {
+    Object.values(layers).forEach((g) => setLayer(g, false));
+    setLayer(gdacsLayer, false);
+    setLayer(focusLayer, true);
+    return;
+  }
+  setLayer(focusLayer, false);
   setLayer(layers.rain, $("t-rain").checked);
   setLayer(layers.waterNormal, $("t-water").checked && !$("t-critical").checked);
   setLayer(layers.waterCritical, $("t-water").checked);
   setLayer(layers.dam, $("t-dam").checked);
   setLayer(gdacsLayer, $("t-gdacs").checked);
 }
-["t-water", "t-rain", "t-dam", "t-gdacs", "t-critical"].forEach((id) => $(id).addEventListener("change", applyToggles));
+// ผู้ใช้กดติ๊กชั้นข้อมูลระหว่างกรองจากการ์ด → ออกจากโหมดกรอง กลับไปใช้ checkbox ตามปกติ
+["t-water", "t-rain", "t-dam", "t-gdacs", "t-critical"].forEach((id) =>
+  $(id).addEventListener("change", () => (focus ? clearFocus() : applyToggles()))
+);
+
+// ---------- Card filters ----------
+// กดการ์ดสรุป → แผนที่เหลือเฉพาะจุดของการ์ดนั้น และรายการด้านข้างกรองตาม กดซ้ำหรือ ✕ เพื่อล้าง
+const FOCUS = {
+  overflow: { label: "สถานีน้ำล้นตลิ่ง", tab: "stations", match: (s) => s.cls === "overflow" },
+  high: { label: "น้ำมาก 70–100%", tab: "stations", match: (s) => s.cls === "high" },
+  rainmax: { label: "ฝนสูงสุด 24 ชม.", tab: "rain", match: (s) => s === lists.rain[0] },
+  heavy: { label: "ฝนหนักมาก >90 มม.", tab: "rain", match: (s) => s.r24 > 90 },
+  dam: { label: "เขื่อนเกิน 80%", tab: "dams", match: (s) => s.pct > 80 },
+};
+const focusLayer = L.layerGroup();
+let focus = null;
+
+function currentItems() {
+  return focus && focus.tab === currentTab ? focus.items : lists[currentTab];
+}
+
+function applyFocus(key, fly = true) {
+  const def = FOCUS[key];
+  const items = lists[def.tab].filter(def.match);
+  focus = { key, ...def, items };
+  focusLayer.clearLayers();
+  items.forEach((s) => { const m = markerIndex.get(s); if (m) focusLayer.addLayer(m); });
+  applyToggles();
+
+  document.querySelectorAll(".card[data-focus]").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.focus === key)));
+  $("focus-chip").hidden = false;
+  $("focus-label").textContent = `${def.label} (${items.length})`;
+  if (fly) selectTab(def.tab); else drawList();
+
+  if (!fly || !items.length) return;
+  if (items.length === 1) {
+    const [s] = items;
+    map.flyTo([s.lat, s.lng], Math.max(map.getZoom(), 10), { duration: 0.8 });
+    map.once("moveend", () => markerIndex.get(s)?.openPopup());
+  } else {
+    map.flyToBounds(L.latLngBounds(items.map((s) => [s.lat, s.lng])).pad(0.15), { maxZoom: 9, duration: 0.8 });
+  }
+}
+
+function clearFocus() {
+  if (!focus) return;
+  focus = null;
+  setLayer(focusLayer, false);
+  focusLayer.clearLayers();
+  applyToggles();
+  document.querySelectorAll(".card[data-focus]").forEach((c) => c.setAttribute("aria-pressed", "false"));
+  $("focus-chip").hidden = true;
+  drawList();
+}
+
+document.querySelectorAll(".card[data-focus]").forEach((card) => {
+  const toggle = () => (focus?.key === card.dataset.focus ? clearFocus() : applyFocus(card.dataset.focus));
+  card.addEventListener("click", toggle);
+  card.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+  });
+});
+$("focus-chip").addEventListener("click", clearFocus);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") clearFocus(); });
 
 // ---------- Windy ----------
 // Windy ให้ฝังได้เฉพาะแบบ iframe จึงแยกเป็นแผงของตัวเอง แล้วซิงก์ตำแหน่งกับแผนที่หลักเมื่อผู้ใช้กด

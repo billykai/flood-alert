@@ -23,28 +23,28 @@
     <div class="status" id="status"><span class="dot"></span><span id="status-text">กำลังโหลด…</span></div>
   </header>
 
-  <section class="cards" aria-label="สรุปสถานการณ์">
-    <article class="card c-red">
+  <section class="cards" aria-label="สรุปสถานการณ์ (กดการ์ดเพื่อกรองแผนที่)">
+    <article class="card c-red" data-focus="overflow" role="button" tabindex="0" aria-pressed="false">
       <h2>สถานีน้ำล้นตลิ่ง</h2>
       <div class="value" id="k-overflow">–</div>
       <p id="k-overflow-sub">&nbsp;</p>
     </article>
-    <article class="card c-orange">
+    <article class="card c-orange" data-focus="high" role="button" tabindex="0" aria-pressed="false">
       <h2>น้ำมาก (70–100% ความจุลำน้ำ)</h2>
       <div class="value" id="k-high">–</div>
       <p id="k-high-sub">&nbsp;</p>
     </article>
-    <article class="card c-violet">
+    <article class="card c-violet" data-focus="rainmax" role="button" tabindex="0" aria-pressed="false">
       <h2>ฝนสูงสุด 24 ชม.</h2>
       <div class="value mono" id="k-rainmax">–</div>
       <p id="k-rainmax-sub">&nbsp;</p>
     </article>
-    <article class="card c-blue">
+    <article class="card c-blue" data-focus="heavy" role="button" tabindex="0" aria-pressed="false">
       <h2>สถานีฝนหนักมาก (&gt;90 มม.)</h2>
       <div class="value" id="k-heavy">–</div>
       <p id="k-heavy-sub">&nbsp;</p>
     </article>
-    <article class="card c-cyan">
+    <article class="card c-cyan" data-focus="dam" role="button" tabindex="0" aria-pressed="false">
       <h2>เขื่อนใหญ่เกิน 80%</h2>
       <div class="value" id="k-dam">–</div>
       <p id="k-dam-sub">&nbsp;</p>
@@ -58,6 +58,7 @@
         <label><input type="checkbox" id="t-rain" checked><span class="sw sw-rain"></span>ฝนหนัก</label>
         <label><input type="checkbox" id="t-dam" checked><span class="sw sw-dam"></span>เขื่อน</label>
         <label><input type="checkbox" id="t-gdacs" checked><span class="sw sw-gdacs"></span>GDACS</label>
+        <button class="focus-chip" id="focus-chip" hidden title="ล้างตัวกรอง (Esc)">กรอง: <b id="focus-label"></b> <span aria-hidden="true">✕</span></button>
         <label class="push"><input type="checkbox" id="t-critical" checked>เฉพาะน้ำมาก/ล้นตลิ่ง</label>
       </div>
       <div id="map"></div>
