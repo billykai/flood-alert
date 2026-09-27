@@ -78,74 +78,93 @@ function gdacsPopup(e) {
 // ---------- Render water data ----------
 const markerIndex = new Map();
 
-// ---------- Province filter ----------
+// ---------- Area filters (จังหวัด / ลุ่มน้ำ) ----------
 // ชื่อที่ข่าวมักใช้แทนชื่อเต็มของจังหวัด
 const PROV_ALIASES = { "กรุงเทพมหานคร": ["กรุงเทพ", "กทม"], "พระนครศรีอยุธยา": ["อยุธยา"] };
 let rawData = null;
-let province = new URLSearchParams(location.search).get("prov") || "";
 let allNews = [];
 
 // ข้อมูลเก่า (ก่อนมีฟิลด์ prov) ดึงชื่อจังหวัดจากข้อความ "อ.X จ.Y"
 const provOf = (s) => s.prov || (s.where?.match(/จ\.(\S+)$/) || [])[1] || "";
-const byProv = (arr) => (province ? arr.filter((s) => provOf(s) === province) : arr);
+const AREA = {
+  prov: { of: provOf, all: "ทั้งประเทศ", az: "ทุกจังหวัด (ก–ฮ)", label: (v) => "จ." + v },
+  basin: { of: (s) => s.basin || "", all: "ทุกลุ่มน้ำ", az: "ทุกลุ่มน้ำ (ก–ฮ)", label: (v) => v },
+};
+const area = Object.fromEntries(Object.keys(AREA).map((k) => [k, new URLSearchParams(location.search).get(k) || ""]));
+const inArea = (s, skip) => Object.keys(AREA).every((k) => k === skip || !area[k] || AREA[k].of(s) === area[k]);
+const byArea = (arr) => arr.filter((s) => inArea(s));
+const areaLabel = () => Object.keys(AREA).filter((k) => area[k]).map((k) => AREA[k].label(area[k])).join(" · ");
+const allPoints = (d) => [...d.water, ...d.rain, ...d.dams];
 
 function renderWater(data) {
   const first = !rawData;
   rawData = data;
-  buildProvinceOptions(data);
-  drawWater({ water: byProv(data.water), rain: byProv(data.rain), dams: byProv(data.dams) });
-  // เปิดจากลิงก์ที่มี ?prov= → ซูมไปจังหวัดนั้นตอนโหลดข้อมูลครั้งแรก
-  if (first && province) fitProvince();
+  // ตัวเลือกแต่ละช่องนับเฉพาะจุดที่ผ่านตัวกรองอีกช่อง เช่น เลือกจังหวัดแล้ว ช่องลุ่มน้ำเหลือเฉพาะลุ่มน้ำในจังหวัดนั้น
+  for (const k of Object.keys(AREA)) buildAreaOptions(k, data);
+  drawWater({ water: byArea(data.water), rain: byArea(data.rain), dams: byArea(data.dams) });
+  // เปิดจากลิงก์ที่มี ?prov= / ?basin= → ซูมไปพื้นที่นั้นตอนโหลดข้อมูลครั้งแรก
+  if (first && areaLabel()) fitArea();
 }
 
-function buildProvinceOptions(data) {
+function buildAreaOptions(key, data) {
+  const { of, all: allText, az } = AREA[key];
   const stats = new Map();
-  for (const s of [...data.water, ...data.rain, ...data.dams]) {
-    const p = provOf(s);
-    if (!p) continue;
-    if (!stats.has(p)) stats.set(p, 0);
-    if (s.cls === "overflow" || s.cls === "high") stats.set(p, stats.get(p) + 1);
+  for (const s of allPoints(data)) {
+    const v = of(s);
+    if (!v || !inArea(s, key)) continue;
+    if (!stats.has(v)) stats.set(v, 0);
+    if (s.cls === "overflow" || s.cls === "high") stats.set(v, stats.get(v) + 1);
   }
-  if (province && !stats.has(province)) province = "";
-  const opt = (p, n) => `<option value="${esc(p)}"${p === province ? " selected" : ""}>${esc(p)}${n ? ` · วิกฤต ${n}` : ""}</option>`;
-  const all = [...stats].sort((a, b) => a[0].localeCompare(b[0], "th"));
-  const hot = all.filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
-  $("prov").innerHTML = `<option value="">ทั้งประเทศ</option>
-    ${hot.length ? `<optgroup label="มีจุดน้ำมาก/ล้นตลิ่ง">${hot.map(([p, n]) => opt(p, n)).join("")}</optgroup>` : ""}
-    <optgroup label="ทุกจังหวัด (ก–ฮ)">${all.map(([p]) => opt(p, 0)).join("")}</optgroup>`;
-  // จังหวัดเดียวกันอยู่ได้ทั้งสองกลุ่ม — ให้ตัวที่เลือกเป็นอันแรกเสมอ
-  $("prov").value = province;
+  // ค่าที่เลือกไว้ไม่อยู่ในพื้นที่ของอีกตัวกรองแล้ว → ล้างทิ้ง
+  if (area[key] && !stats.has(area[key])) { area[key] = ""; syncUrl(); }
+  const opt = (v, n) => `<option value="${esc(v)}">${esc(v)}${n ? ` · วิกฤต ${n}` : ""}</option>`;
+  const sorted = [...stats].sort((a, b) => a[0].localeCompare(b[0], "th"));
+  const hot = sorted.filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  const el = $(key);
+  el.innerHTML = `<option value="">${allText}</option>
+    ${hot.length ? `<optgroup label="มีจุดน้ำมาก/ล้นตลิ่ง">${hot.map(([v, n]) => opt(v, n)).join("")}</optgroup>` : ""}
+    <optgroup label="${az}">${sorted.map(([v]) => opt(v, 0)).join("")}</optgroup>`;
+  // ค่าเดียวกันอยู่ได้ทั้งสองกลุ่ม — .value เลือกตัวแรก (กลุ่มวิกฤต) ให้เอง
+  el.value = area[key];
+  el.classList.toggle("active", !!area[key]);
+}
+
+function syncUrl() {
+  const url = new URL(location.href);
+  for (const k of Object.keys(AREA)) {
+    if (area[k]) url.searchParams.set(k, area[k]); else url.searchParams.delete(k);
+  }
+  history.replaceState(null, "", url);
 }
 
 function applyNewsFilter() {
-  if (!province) { lists.news = allNews; return; }
-  const names = [province, ...(PROV_ALIASES[province] || [])];
+  // กรองข่าวตามจังหวัดเท่านั้น — ชื่อลุ่มน้ำสั้น (เช่น "ชี", "มูล") จับคำผิดในพาดหัวได้ง่าย
+  if (!area.prov) { lists.news = allNews; return; }
+  const names = [area.prov, ...(PROV_ALIASES[area.prov] || [])];
   lists.news = allNews.filter((n) => names.some((k) => n.title.includes(k)));
 }
 
-function setProvince(p) {
-  province = p;
-  const url = new URL(location.href);
-  if (p) url.searchParams.set("prov", p); else url.searchParams.delete("prov");
-  history.replaceState(null, "", url);
-  $("prov").classList.toggle("active", !!p);
-  applyNewsFilter();
+function setArea(key, value) {
+  area[key] = value;
+  syncUrl();
   if (rawData) renderWater(rawData);
-  else updateCounts();
-  fitProvince();
+  applyNewsFilter();
+  updateCounts();
+  fitArea();
 }
 
-function fitProvince() {
-  const p = province;
-  // กรองจากการ์ดค้างอยู่ → ซูมไปที่จุดของการ์ดในจังหวัดใหม่ ไม่งั้นซูมทั้งจังหวัด
+function fitArea() {
+  // กรองจากการ์ดค้างอยู่ → ซูมไปที่จุดของการ์ดในพื้นที่ใหม่ ไม่งั้นซูมทั้งพื้นที่
   const pts = focus?.items.length ? focus.items
-    : rawData ? [...rawData.water, ...rawData.rain, ...rawData.dams].filter((s) => p && provOf(s) === p) : [];
+    : rawData && areaLabel() ? byArea(allPoints(rawData)) : [];
   if (pts.length === 1) map.flyTo([pts[0].lat, pts[0].lng], Math.max(map.getZoom(), 10), { duration: 0.8 });
   else if (pts.length) map.flyToBounds(L.latLngBounds(pts.map((s) => [s.lat, s.lng])).pad(0.2), { maxZoom: 10, duration: 0.8 });
-  else if (!p) map.flyTo([13.2, 101.0], 6, { duration: 0.8 });
+  else if (!areaLabel()) map.flyTo([13.2, 101.0], 6, { duration: 0.8 });
 }
-$("prov").addEventListener("change", (e) => setProvince(e.target.value));
-$("prov").classList.toggle("active", !!province);
+for (const k of Object.keys(AREA)) {
+  $(k).addEventListener("change", (e) => setArea(k, e.target.value));
+  $(k).classList.toggle("active", !!area[k]);
+}
 
 function drawWater(data) {
   Object.values(layers).forEach((g) => g.clearLayers());
@@ -260,7 +279,7 @@ function drawList() {
   const head = $("list-head");
   if (currentTab === "news") {
     head.hidden = false;
-    head.innerHTML = `<span>${province ? `ข่าวที่กล่าวถึง จ.${esc(province)}` : newsGenerated ? "ดึงข่าวเมื่อ " + ago(newsGenerated) : "ข่าวจาก Google News"}</span>
+    head.innerHTML = `<span>${area.prov ? `ข่าวที่กล่าวถึง จ.${esc(area.prov)}` : newsGenerated ? "ดึงข่าวเมื่อ " + ago(newsGenerated) : "ข่าวจาก Google News"}</span>
       <a href="${X_URL}" target="_blank" rel="noopener">ดู #น้ำท่วม บน X ↗</a>`;
   } else if (currentTab === "gdacs") {
     head.hidden = false;
@@ -272,8 +291,8 @@ function drawList() {
   const items = currentItems().slice(0, 300);
   const ul = $("list");
   if (!items.length) {
-    const where = province ? `ใน จ.${esc(province)}` : "";
-    ul.innerHTML = `<li class="empty">${currentTab === "news" ? `ยังไม่มีข่าว${where ? "ที่กล่าวถึงจังหวัดนี้" : ""}` : `ไม่มีรายการ${where}`}</li>`;
+    const where = areaLabel() ? ` ใน ${esc(areaLabel())}` : "";
+    ul.innerHTML = `<li class="empty">${currentTab === "news" ? `ยังไม่มีข่าว${area.prov ? "ที่กล่าวถึงจังหวัดนี้" : ""}` : `ไม่มีรายการ${where}`}</li>`;
     return;
   }
   if (currentTab === "news") {

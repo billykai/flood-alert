@@ -33,7 +33,7 @@ export function parseThaiWater(json) {
         diff: num(d.diff_wl_bank), diffText: d.diff_wl_bank_text || "",
         river: d.river_name || "",
         agency: th(d.agency?.agency_shortname),
-        time: d.waterlevel_datetime, where: place(d.geocode), prov: prov(d.geocode),
+        time: d.waterlevel_datetime, where: place(d.geocode), prov: prov(d.geocode), basin: th(d.basin?.basin_name),
       };
     })
     .filter((s) => s.lat && s.lng);
@@ -45,7 +45,7 @@ export function parseThaiWater(json) {
       lat: d.station?.tele_station_lat, lng: d.station?.tele_station_long,
       r24: num(d.rain_24h), r1: num(d.rain_1h),
       agency: th(d.agency?.agency_shortname),
-      time: d.rainfall_datetime, where: place(d.geocode), prov: prov(d.geocode),
+      time: d.rainfall_datetime, where: place(d.geocode), prov: prov(d.geocode), basin: th(d.basin?.basin_name),
     }))
     .filter((s) => s.lat && s.lng && s.r24 !== null && s.r24 >= RAIN_MIN);
 
@@ -57,7 +57,7 @@ export function parseThaiWater(json) {
       pct: num(d.dam_storage_percent), storage: num(d.dam_storage),
       max: num(d.dam?.normal_storage),
       inflow: num(d.dam_inflow), released: num(d.dam_released),
-      time: d.dam_date, where: place(d.geocode), prov: prov(d.geocode),
+      time: d.dam_date, where: place(d.geocode), prov: prov(d.geocode), basin: th(d.basin?.basin_name),
     }))
     .filter((s) => s.lat && s.lng);
 

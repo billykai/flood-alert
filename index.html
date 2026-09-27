@@ -20,10 +20,12 @@
         <p>ระดับน้ำ · ฝน 24 ชม. · เขื่อน · ข่าว · GDACS</p>
       </div>
     </div>
-    <label class="prov-pick">
-      <span>จังหวัด</span>
-      <select id="prov" aria-label="กรองตามจังหวัด"><option value="">ทั้งประเทศ</option></select>
-    </label>
+    <div class="area-pick">
+      <label><span>จังหวัด</span>
+        <select id="prov" aria-label="กรองตามจังหวัด"><option value="">ทั้งประเทศ</option></select></label>
+      <label><span>ลุ่มน้ำ</span>
+        <select id="basin" aria-label="กรองตามลุ่มน้ำ"><option value="">ทุกลุ่มน้ำ</option></select></label>
+    </div>
     <div class="status" id="status"><span class="dot"></span><span id="status-text">กำลังโหลด…</span></div>
   </header>
 
